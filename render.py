@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Render the front page for 18 November 2026: one image, 45 stories.
+"""Render the v2 front page for 18 November 2026: one image, 52 stories.
 
-Builds entry.png (1024x1024) from sheet.webp, a 4x4 contact sheet of the
-13 original editorial illustrations drawn for this page. Run:
+A dense front page in the winning pattern (navy masthead with NOV 18 box,
+three big heroes, a UTC timeline, a numbers strip, a dotted world map and a
+numbered ALSO ON list), but a composition of its own. Builds entry.png
+(1024x1024) from sheet.webp (the 13 original editorial illustrations) plus
+three flat data-graphics drawn here in code. Run:
     python3 render.py            # writes entry.png beside this file
-The sheet lives beside this file too, so the page rebuilds anywhere.
 """
 import os
 import sys
@@ -16,8 +18,13 @@ PAPER = (247, 243, 232)
 INK = (25, 25, 25)
 MUTED = (107, 98, 87)
 RED = (179, 35, 27)
+NAVY = (16, 32, 54)
+NAVY_LT = (38, 58, 86)
+GOLD = (200, 164, 60)
+GOLD_DK = (176, 138, 38)
 RULE = (25, 25, 25)
 SLATE = (58, 74, 90)
+BAND = (232, 236, 240)
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 
@@ -40,164 +47,174 @@ REGION_COLORS = {
     "Oceania": (42, 138, 138),
     "World": (119, 119, 119),
 }
-FIELD_COLORS = {
-    "War & security": (179, 35, 27),
-    "Politics & diplomacy": (47, 93, 138),
-    "Economy & labour": (217, 138, 31),
-    "Society & culture": (106, 74, 138),
-    "Health": (194, 90, 138),
-    "Disasters & weather": (42, 138, 138),
-    "Tech & science": (85, 85, 85),
-    "Climate & space": (90, 125, 58),
-}
 
-# (number, sheet cell, kicker, headline, deck, region, field, map pin lon/lat)
-LEADS = [
-    (1, 0, "MIDDLE EAST \u00b7 WAR & SECURITY",
-     "Iran fires drones at US bases in the Gulf",
-     "Kuwait and Bahrain say they shot down the drones before dawn, hours "
-     "after US jets struck a missile site on Qeshm Island.",
-     "Middle East", "War & security", (48.0, 29.5)),
-    (2, 1, "ASIA \u00b7 POLITICS & DIPLOMACY",
+# (number, sheet cell or 'chart', kicker, headline, deck, region, field,
+#  proof, caption or chip, map pin lon/lat or None)
+HEROES = [
+    (1, 1, "ASIA \u00b7 APEC SUMMIT",
      "Xi greets Trump as APEC opens in Shenzhen",
-     "Xi and Putin meet ahead of Thursday\u2019s three-way summit, as Xi "
-     "vows to resist trade protectionism.",
-     "Asia", "Politics & diplomacy", (114.0, 22.5)),
-    (3, 2, "WORLD \u00b7 CLIMATE & SPACE",
-     "COP31 splits over fossil-fuel phase-out",
-     "Draft calls for a faster phase-out and $120bn a year in adaptation "
-     "finance; the EU envoy warns it could make the talks \u2018untenable\u2019.",
-     "World", "Climate & space", (30.7, 36.9)),
+     "A rare honour from China's leader; Trump and Putin meet at the "
+     "banquet, their three-way talks on Thursday.",
+     "Asia", "Politics & diplomacy", "AP",
+     "SHENZHEN \u00b7 APEC LEADERS' WEEK", (114.0, 22.5)),
+    (2, 0, "MIDDLE EAST \u00b7 IRAN WAR",
+     "Bahrain and Kuwait intercept Iran's drones",
+     "Iran says it aimed at a US radar in Bahrain and Patriot batteries "
+     "in Kuwait after a US strike on Qeshm.",
+     "Middle East", "War & security", "AL JAZEERA",
+     "BAHRAIN \u00b7 KUWAIT \u00b7 THE GULF", (48.0, 29.5)),
+    (3, 3, "WORLD \u00b7 SPACE",
+     "Voyager 1 reaches one light-day from Earth",
+     "The first craft to get 25.9 billion km away; a command sent today "
+     "takes a full day to arrive.",
+     "World", "Climate & space", "NASA",
+     "INTERSTELLAR SPACE \u00b7 NASA", None),
 ]
 
-# (number, sheet cell, headline, deck, region, field, map pin lon/lat or None)
+MEDIUM = [
+    (4, 4, "EUROPE \u00b7 UKRAINE WAR",
+     "Russia fires 141 drones at Ukraine; 126 downed",
+     "Hits at seven sites overnight; four killed in Donetsk, its "
+     "governor says.",
+     "Europe", "War & security", "UK AIR FORCE",
+     "141 FIRED \u00b7 126 DOWNED", (30.5, 50.4)),
+    (5, 5, "ASIA \u00b7 LABOUR",
+     "Bangladesh wage protests shut garment factories",
+     "Workers want Tk30,000 a month; police report about 300 arrests.",
+     "Asia", "Economy & labour", "DAILY STAR",
+     "WAGE DEMAND TK 30,000", (90.4, 23.8)),
+    (6, 6, "AMERICAS \u00b7 GAMES",
+     "GTA VI goes on sale at midnight",
+     "New Zealand first; the launch rolls out time zone by time zone.",
+     "Americas", "Society & culture", "SENSOR TOWER",
+     "00:00 THU \u00b7 NZ FIRST", (174.8, -36.8)),
+    (7, 7, "AMERICAS \u00b7 US POLITICS",
+     "Democrats pick Jeffries for Speaker",
+     "A 251\u201311 caucus vote puts him on course to be the first Black "
+     "Speaker.",
+     "Americas", "Politics & diplomacy", "NPR \u00b7 CBS",
+     "251\u201311 CAUCUS VOTE", (-77.0, 38.9)),
+]
+
 SMALL = [
-    (4, 3, "Voyager 1, one light-day from Earth",
-     "NASA\u2019s 1977 probe passes 25.9bn km.",
-     "World", "Climate & space", None),
-    (5, 4, "Russia fires 141 drones at Ukraine",
-     "126 downed; at least 5 killed.",
-     "Europe", "War & security", (30.5, 50.4)),
-    (6, 5, "Wage protests shut 535 garment factories",
-     "Workers want Tk30,000 a month.",
-     "Asia", "Economy & labour", (90.4, 23.8)),
-    (7, 6, "GTA VI goes on sale at midnight",
-     "New Zealand first; ~17m pre-orders.",
-     "Americas", "Society & culture", (174.8, -36.8)),
-    (8, 7, "Democrats pick Jeffries for Speaker",
-     "Caucus votes 251\u201311.",
-     "Americas", "Politics & diplomacy", (-77.0, 38.9)),
-    (9, 8, "Ethiopia and Eritrea mass troops on border",
+    (8, 8, "AFRICA \u00b7 HORN",
+     "Ethiopia and Eritrea mass troops on border",
      "Armies within striking distance.",
-     "Africa", "War & security", (37.8, 14.7)),
-    (10, 9, "Cyclone Akvan bears down on India",
-     "Red alert; landfall expected Friday.",
-     "Asia", "Disasters & weather", (82.0, 16.0)),
-    (11, 10, "Gaza truce may collapse, Board of Peace warns",
-     "Report faults Israel and Hamas.",
-     "Middle East", "War & security", (34.5, 31.5)),
-    (12, 11, "Ebola passes 11,000 cases in DR Congo",
+     "Africa", "War & security", "REUTERS", (37.8, 14.7)),
+    (9, 9, "ASIA \u00b7 WEATHER",
+     "Cyclone Akvan veers north toward Odisha",
+     "Landfall due 20 Nov; evacuations begin.",
+     "Asia", "Disasters & weather", "IMD", (82.0, 16.0)),
+    (10, 10, "MIDDLE EAST \u00b7 GAZA",
+     "Israeli tanks roll into central Gaza",
+     "Near Nuseirat; three killed.",
+     "Middle East", "War & security", "REUTERS", (34.5, 31.5)),
+    (11, 11, "AFRICA \u00b7 HEALTH",
+     "Ebola passes 11,000 cases in DR Congo",
      "Second-largest outbreak on record.",
-     "Africa", "Health", (25.0, -2.0)),
-    (13, 12, "US loses measles-free status after 26 years",
+     "Africa", "Health", "WHO", (25.0, -2.0)),
+    (12, 12, "AMERICAS \u00b7 HEALTH",
+     "US loses measles-free status after 26 years",
      "5,412 cases in 2026; 10 deaths.",
-     "Americas", "Health", (-98.0, 39.5)),
+     "Americas", "Health", "CDC", (-98.0, 39.5)),
 ]
 
-# (place, text, region, field)
+# (number, chart kind, kicker, headline, deck, region, field, proof, pin)
+CHARTS = [
+    (13, "dow", "AMERICAS \u00b7 MARKETS",
+     "Fed minutes: almost all officials see more hikes",
+     "Dow falls 1.1%; the Nasdaq gains.",
+     "Americas", "Economy & labour", "FED \u00b7 AP", (-77.0, 38.9)),
+    (14, "cpi", "EUROPE \u00b7 ECONOMY",
+     "UK inflation climbs to 3.6%, a one-year high",
+     "October CPI up from 3.5%, ONS says.",
+     "Europe", "Economy & labour", "ONS", (-0.1, 51.5)),
+    (15, "ipo", "AMERICAS \u00b7 BUSINESS",
+     "Anthropic prices the biggest IPO ever",
+     "$83 a share; $83.1bn raised.",
+     "Americas", "Economy & labour", "AL JAZEERA", (-122.4, 37.8)),
+    (16, 2, "WORLD \u00b7 CLIMATE",
+     "COP31 still split over a fossil-fuel phase-out",
+     "Ministers face a Friday deadline in Antalya.",
+     "World", "Climate & space", "AFP", (30.7, 36.9)),
+]
+
+# (number, place, text) -- one line each, kept short on purpose.
 BRIEFS = [
-    ("Riyadh", "Saudi-led coalition downs Houthi cruise missile.",
-     "Middle East", "War & security"),
-    ("Knesset", "approves nine deputy speakers, two of them Arab.",
-     "Middle East", "Politics & diplomacy"),
-    ("Berlin", "coalition to cut power tax and cap fuel prices.",
-     "Europe", "Economy & labour"),
-    ("Germany", "accuses Russia of chemical-weapons breaches.",
-     "Europe", "War & security"),
-    ("Cambridge", "\u2018human\u2019 named word of the year.",
-     "Europe", "Society & culture"),
-    ("Shenzhen", "Xi and Lee conclude FTA services talks.",
-     "Asia", "Economy & labour"),
-    ("Manila", "Trump claims a trade deal; Manila says none signed.",
-     "Asia", "Politics & diplomacy"),
-    ("Tokyo", "Japan posts sixth straight monthly trade deficit.",
-     "Asia", "Economy & labour"),
-    ("London", "UK inflation rises to 3.6%, highest in a year.",
-     "Europe", "Economy & labour"),
-    ("Brussels", "EU proposes a \u20ac45bn loan for Ukraine in 2027.",
-     "Europe", "Economy & labour"),
-    ("Gold", "sinks below $3,800 an ounce, lowest in over a year.",
-     "World", "Economy & labour"),
-    ("Canberra", "Australia sanctions settler leader Daniella Weiss.",
-     "Middle East", "Politics & diplomacy"),
-    ("El Obeid", "Amnesty: RSF drones killed 37 civilians.",
-     "Africa", "War & security"),
-    ("Quad", "leaders meet in Manila, first time in two years.",
-     "Asia", "Politics & diplomacy"),
-    ("Caracas", "US and Venezuela sign a military pact.",
-     "Americas", "War & security"),
-    ("Sudan", "2,230 civilians killed this year, UN says.",
-     "Africa", "War & security"),
-    ("Naypyidaw", "Myanmar to review its ties with ASEAN.",
-     "Asia", "Politics & diplomacy"),
-    ("Stockholm", "Europe off track on antibiotic resistance, ECDC warns.",
-     "Europe", "Health"),
-    ("Lahore", "world\u2019s most polluted big city again, AQI 339.",
-     "Asia", "Disasters & weather"),
-    ("Oil", "Brent crude slips to about $92 a barrel.",
-     "World", "Economy & labour"),
-    ("Tencent", "revenue up 8%, below forecasts.",
-     "Asia", "Economy & labour"),
-    ("Cook Islands", "Cyclone Xavier reaches Category 5.",
-     "Oceania", "Disasters & weather"),
-    ("Wellington", "tsunami advisory lifted after 60cm surges.",
-     "Oceania", "Disasters & weather"),
-    ("Sydney", "Tame Impala sweeps the ARIA Awards.",
-     "Oceania", "Society & culture"),
-    ("Ottawa", "Carney says China trade no worry for Trump.",
-     "Americas", "Politics & diplomacy"),
-    ("Lima", "M5.9 quake off south coast, no damage reported.",
-     "Americas", "Disasters & weather"),
-    ("Cincinnati", "USA beat Haiti 2\u20130, into Nations League semis.",
-     "Americas", "Society & culture"),
-    ("Monterrey", "Mexico edge Jamaica, semi vs USA.",
-     "Americas", "Society & culture"),
-    ("Los Angeles", "Grimes scores 47 as Lakers win ninth straight.",
-     "Americas", "Society & culture"),
-    ("Buenos Aires", "deputies debate Malvinas sovereignty bill.",
-     "Americas", "Politics & diplomacy"),
-    ("Washington", "NSA confirms outage on classified network.",
-     "Americas", "Tech & science"),
-    ("Pretoria", "South Africa inflation jumps to 5.2%.",
-     "Africa", "Economy & labour"),
+    (17, "Riyadh", "Houthi missile downed"),
+    (18, "Knesset", "nine deputies, two Arab"),
+    (19, "Berlin", "power tax cut, fuel cap"),
+    (20, "Germany", "Russia chemical breach"),
+    (21, "Cambridge", "'human' word of the year"),
+    (22, "Shenzhen", "Xi, Lee end FTA talks"),
+    (23, "Manila", "Trump deal claim denied"),
+    (24, "Tokyo", "sixth monthly trade deficit"),
+    (25, "Brussels", "\u20ac45bn Ukraine loan for 2027"),
+    (26, "Gold", "below $3,800, a one-year low"),
+    (27, "Canberra", "settler leader sanctioned"),
+    (28, "El Obeid", "RSF drones kill 37, Amnesty"),
+    (29, "Quad", "leaders meet in Manila"),
+    (30, "Caracas", "US\u2013Venezuela military pact"),
+    (31, "Sudan", "2,230 civilians killed in 2026"),
+    (32, "Naypyidaw", "Myanmar-ASEAN review"),
+    (33, "Stockholm", "antibiotic goal missed"),
+    (34, "Lahore", "most polluted city, AQI 339"),
+    (35, "Oil", "Brent slips to about $92"),
+    (36, "Tencent", "revenue up 8%, miss"),
+    (37, "Cook Islands", "Xavier hits Cat 5"),
+    (38, "Wellington", "tsunami advisory lifted"),
+    (39, "Sydney", "Tame Impala sweeps ARIAs"),
+    (40, "Ottawa", "Carney: China trade no worry"),
+    (41, "Lima", "M5.9 quake, no damage"),
+    (42, "Cincinnati", "USA beat Haiti 2\u20130"),
+    (43, "Monterrey", "Mexico edge Jamaica"),
+    (44, "Los Angeles", "Grimes scores 47 in win"),
+    (45, "Buenos Aires", "Malvinas bill debated"),
+    (46, "Washington", "NSA classified outage"),
+    (47, "Pretoria", "inflation jumps to 5.2%"),
+    (48, "Haiti", "troops raid gang boss home"),
+    (49, "Pew", "Muslims top Christians by 2035"),
+    (50, "Alcaraz", "beats Medvedev in Turin"),
+    (51, "Nvidia", "shares fall 2.9% on results"),
+    (52, "Board of Peace", "Gaza truce at risk"),
 ]
 
 NUMBERS = [
     ("141", "drones at Ukraine"),
-    ("535", "factories shut"),
     ("25.9bn km", "to Voyager 1"),
-    ("17.0m", "GTA VI pre-orders"),
-    ("5,412", "measles cases"),
+    ("$3,792", "gold an ounce"),
+    ("251\u201311", "Jeffries vote"),
+    ("2,230", "killed in Sudan"),
+]
+
+TIMELINE = [
+    ("OVERNIGHT", "Drones over Gulf"),
+    ("07:00", "UK inflation 3.6%"),
+    ("MORNING", "Xi greets Trump"),
+    ("10:16", "Voyager 1 light-day"),
+    ("11:00", "GTA VI in NZ"),
+    ("19:00", "Fed: more hikes"),
+    ("21:00", "Dow \u2212561"),
 ]
 
 DATE_CHECK = (
-    "Left out on purpose \u2014 first reported Tue 17 Nov: Peltola\u2019s Alaska "
-    "Senate win; Nvidia\u2019s $115.8bn quarter; the Kerch Bridge span "
-    "collapse; the Prague train crash; Mongolia\u2019s president resigning; "
-    "the Knesset speaker vote. Cyclone Akvan formed 16 Nov \u2014 today is "
-    "its approach. The Qeshm strike (Tue night) appears only as the cause "
-    "of today\u2019s drones."
+    "Left out on purpose \u2014 first reported Tue 17 Nov: Peltola\u2019s "
+    "Alaska Senate win; Nvidia\u2019s $115.8bn quarter; the Kerch Bridge "
+    "span collapse; the Prague train crash; Mongolia\u2019s president "
+    "resigning; the Knesset speaker vote. Cyclone Akvan formed 16 Nov "
+    "\u2014 today is its approach. The Qeshm strike (Tue night) appears "
+    "only as the cause of today\u2019s drones."
 )
 
 FOOTER = (
     "Every story here happened, or was first reported, on Wednesday, "
     "18 November 2026. Contested claims are attributed. Sources: Reuters, "
-    "AP, AFP, BBC, Al Jazeera, Bloomberg, NASA, WHO, ONS. Original illustrations."
+    "AP, AFP, BBC, Al Jazeera, Bloomberg, NASA, WHO, ONS. Original "
+    "illustrations and charts."
 )
 
 # World map as a 96 x 24 dotted grid, equirectangular, lon -180..180,
 # lat 78..-56. Each row lists the land intervals (first, last) in columns.
-# Drawn from the continents' rough outlines.
 MAP_LAND = [
     [(23, 26), (36, 39)],
     [(6, 12), (18, 31), (35, 41), (66, 92)],
@@ -242,11 +259,15 @@ def wrap(draw, text, fnt, width):
     return lines
 
 
-def draw_wrapped(draw, x, y, text, fnt, width, fill=INK, leading=None):
+def draw_wrapped(draw, x, y, text, fnt, width, fill=INK, leading=None,
+                 max_lines=None):
     """Draw wrapped text; returns the y just below the last line."""
     if leading is None:
         leading = int(fnt.size * 1.28)
-    for line in wrap(draw, text, fnt, width):
+    lines = wrap(draw, text, fnt, width)
+    if max_lines is not None:
+        lines = lines[:max_lines]
+    for line in lines:
         draw.text((x, y), line, font=fnt, fill=fill)
         y += leading
     return y
@@ -274,26 +295,39 @@ def sheet_cell(sheet, idx):
                        (idx % 4 + 1) * 480, (idx // 4 + 1) * 320))
 
 
-def badge(draw, x, y, num, size=17):
-    """Red disc with a white story number, top-left of a picture."""
+def gold_badge(draw, x, y, num, size=20):
+    """Gold disc with a navy story number."""
     r = size // 2
-    draw.ellipse((x, y, x + size, y + size), fill=RED)
+    draw.ellipse((x, y, x + size, y + size), fill=GOLD,
+                 outline=(255, 255, 255), width=1)
     f = font(SANS_B, 11)
+    t = str(num)
+    tw = draw.textlength(t, font=f)
+    draw.text((x + (size - tw) / 2, y + 3), t, font=f, fill=NAVY)
+
+
+def red_badge(draw, x, y, num, size=16):
+    """Red disc with a white story number."""
+    draw.ellipse((x, y, x + size, y + size), fill=RED)
+    f = font(SANS_B, 10)
     t = str(num)
     tw = draw.textlength(t, font=f)
     draw.text((x + (size - tw) / 2, y + 2), t, font=f, fill=(255, 255, 255))
 
 
-def count_bar(draw, x, y, width, counts, colors, order):
-    """One stacked horizontal bar; returns the legend line for it."""
-    total = sum(counts[k] for k in order)
-    bx = x
-    for k in order:
-        wseg = max(0, round(width * counts[k] / total))
-        if wseg:
-            draw.rectangle((bx, y, bx + wseg - 1, y + 10), fill=colors[k])
-        bx += wseg
-    return "   ".join("%s %d" % (k, counts[k]) for k in order)
+def kicker_line(draw, x, y, num, kicker, proof, width, badge_size=16,
+                gold=False):
+    """Number badge + red kicker + right-aligned proof tag."""
+    if gold:
+        gold_badge(draw, x, y - 3, num, size=badge_size)
+    else:
+        red_badge(draw, x, y - 2, num, size=badge_size)
+    kx = x + badge_size + 6
+    f_k = font(SANS_B, 10)
+    draw.text((kx, y), kicker, font=f_k, fill=RED)
+    f_p = font(SANS_B, 8)
+    pw = draw.textlength(proof, font=f_p)
+    draw.text((x + width - pw, y + 1), proof, font=f_p, fill=MUTED)
 
 
 def map_point(lon, lat, mx, my, mw, mh):
@@ -303,7 +337,7 @@ def map_point(lon, lat, mx, my, mw, mh):
     return px, py
 
 
-def draw_map(draw, x, y, w, h):
+def draw_map(draw, x, y, w, h, pins):
     """Dotted continents plus numbered pins for the illustrated stories."""
     draw.rectangle((x, y, x + w, y + h), outline=RULE, width=1)
     cw, ch = w / 96.0, h / 24.0
@@ -312,46 +346,52 @@ def draw_map(draw, x, y, w, h):
             for c in range(c0, c1 + 1):
                 cx = x + (c + 0.5) * cw
                 cy = y + (r + 0.5) * ch
-                draw.ellipse((cx - 1.3, cy - 1.3, cx + 1.3, cy + 1.3),
+                draw.ellipse((cx - 1.2, cy - 1.2, cx + 1.2, cy + 1.2),
                              fill=SLATE)
-    note = "4 \u2014 Voyager 1 \u2014 is 25.9bn km away, off this map."
-    d_note = font(SANS, 9)
-    draw.text((x + 6, y + h - 12), note, font=d_note, fill=MUTED)
-    pins = [(lead[0], lead[7]) for lead in LEADS]
-    pins += [(s[0], s[6]) for s in SMALL]
-    pins = [(n, pin) for (n, pin) in pins if pin is not None]
-    f = font(SANS_B, 8)
-    # Small nudges so pins that are neighbours in reality stay readable.
-    nudge = {1: (7, 5), 3: (-8, -6), 11: (-3, 8), 10: (6, 6)}
+    f = font(SANS_B, 7)
+    nudge = {2: (9, 4), 7: (-7, -7), 10: (-4, 7), 13: (8, 7), 16: (7, -6)}
     for num, (lon, lat) in pins:
         px, py = map_point(lon, lat, x + 4, y + 4, w - 8, h - 8)
         dx, dy = nudge.get(num, (0, 0))
         px, py = px + dx, py + dy
-        draw.ellipse((px - 6, py - 6, px + 6, py + 6), fill=RED,
+        draw.ellipse((px - 5, py - 5, px + 5, py + 5), fill=RED,
                      outline=(255, 255, 255), width=1)
         t = str(num)
         tw = draw.textlength(t, font=f)
-        draw.text((px - tw / 2, py - 5), t, font=f, fill=(255, 255, 255))
+        draw.text((px - tw / 2, py - 4), t, font=f, fill=(255, 255, 255))
 
 
-def draw_runs(draw, x, y, runs):
-    """Draw (text, font, fill) runs left to right; returns end x."""
-    for text, fnt, fill in runs:
-        draw.text((x, y), text, font=fnt, fill=fill)
-        x += draw.textlength(text, font=fnt)
-    return x
-
-
-def draw_legend(draw, x, y, counts, colors, order):
-    """Coloured squares + 'Label n' items in one row; returns end x."""
-    f = font(SANS, 10)
-    for k in order:
-        draw.rectangle((x, y + 1, x + 8, y + 9), fill=colors[k])
-        x += 12
-        t = "%s %d" % (k, counts[k])
-        draw.text((x, y), t, font=f, fill=INK)
-        x += draw.textlength(t, font=f) + 16
-    return x
+def draw_chart(kind, w, h):
+    """Flat data-graphic card (PIL-drawn) for the chart-row stories."""
+    img = Image.new("RGB", (w, h), (16, 32, 54))
+    d = ImageDraw.Draw(img)
+    if kind == "dow":
+        # Falling line, Dow -561 (-1.1%).
+        pts = [(14, 12), (40, 16), (66, 14), (92, 22), (118, 20),
+               (144, 28), (170, 26), (196, 34), (222, 40)]
+        for i in range(len(pts) - 1):
+            d.line((pts[i], pts[i + 1]), fill=(255, 255, 255), width=2)
+        for px, py in pts:
+            d.ellipse((px - 2, py - 2, px + 2, py + 2), fill=GOLD)
+        d.text((14, h - 20), "DOW \u2212561  \u00b7  \u22121.1%",
+               font=font(SANS_B, 11), fill=(255, 255, 255))
+    elif kind == "cpi":
+        # Big-number card: 3.6%, up from 3.5% in September.
+        d.text((14, 4), "3.6%", font=font(SERIF_B, 28), fill=GOLD)
+        d.text((14, h - 18), "UK INFLATION \u00b7 UP FROM 3.5%",
+               font=font(SANS_B, 9), fill=(255, 255, 255))
+        d.rectangle((w - 52, 10, w - 14, h - 24), outline=GOLD, width=2)
+        d.text((w - 46, 14), "ONS", font=font(SANS_B, 11), fill=GOLD)
+    elif kind == "ipo":
+        d.text((14, 6), "$83", font=font(SERIF_B, 30), fill=GOLD)
+        d.text((14, h - 20), "A SHARE \u00b7 $83.1BN RAISED",
+               font=font(SANS_B, 10), fill=(255, 255, 255))
+        bars = [10, 16, 13, 22, 30]
+        bx = w - 78
+        for i, bh in enumerate(bars):
+            d.rectangle((bx + i * 14, h - 8 - bh, bx + i * 14 + 9, h - 8),
+                        fill=(120, 140, 170) if i < 4 else GOLD)
+    return img
 
 
 def build(out_path):
@@ -364,149 +404,258 @@ def build(out_path):
     cw = x1 - x0
     y = 14
 
-    # ---- Masthead ----
-    f_kick = font(SERIF_B, 15)
-    f_right = font(SANS_B, 11)
-    d.text((x0, y), "THE WORLD IN ONE DAY", font=f_kick, fill=INK)
-    rt = "45 STORIES \u00b7 13 PICTURES"
-    d.text((x1 - d.textlength(rt, font=f_right), y + 2), rt,
-           font=f_right, fill=INK)
-    y += 24
-    d.rectangle((x0, y, x1, y + 2), fill=RULE)
-    d.rectangle((x0, y + 5, x1, y + 6), fill=RULE)
-    y += 12
-    f_date = font(SERIF_B, 42)
+    # ---- Masthead: navy band, NOV 18 box, giant date, story counts ----
+    band_y, band_h = 14, 80
+    d.rectangle((x0, band_y, x1, band_y + band_h), fill=NAVY)
+    # Calendar box.
+    bx, by, bw, bh = x0 + 10, band_y + 9, 62, 66
+    d.rectangle((bx, by, bx + bw, by + bh), fill=(255, 255, 255))
+    d.rectangle((bx, by, bx + bw, by + 18), fill=RED)
+    f_nov = font(SANS_B, 11)
+    t = "NOV"
+    d.text((bx + (bw - d.textlength(t, font=f_nov)) / 2, by + 3), t,
+           font=f_nov, fill=(255, 255, 255))
+    f_day = font(SERIF_B, 32)
+    t = "18"
+    d.text((bx + (bw - d.textlength(t, font=f_day)) / 2, by + 18), t,
+           font=f_day, fill=NAVY)
+    f_wd = font(SANS_B, 8)
+    t = "WED \u00b7 2026"
+    d.text((bx + (bw - d.textlength(t, font=f_wd)) / 2, by + 52), t,
+           font=f_wd, fill=NAVY)
+    # Date, centred between the box and the right counts.
+    f_date = font(SERIF_B, 40)
     dt = "Wednesday 18 November 2026"
-    d.text(((W - d.textlength(dt, font=f_date)) / 2, y), dt,
-           font=f_date, fill=INK)
-    y += 52
-    f_sub = font(SERIF, 13)
-    st = "Every story below happened, or was first reported, on this one day."
-    d.text(((W - d.textlength(st, font=f_sub)) / 2, y), st,
-           font=f_sub, fill=MUTED)
-    y += 22
-    d.rectangle((x0, y, x1, y), fill=RULE)
-    y += 7
+    cx = (x0 + bw + 24 + x1 - 190) / 2
+    d.text((cx - d.textlength(dt, font=f_date) / 2, band_y + 10), dt,
+           font=f_date, fill=(255, 255, 255))
+    f_tag = font(SERIF, 12)
+    tg = "Everything on this page happened, or was first reported, today."
+    d.text((cx - d.textlength(tg, font=f_tag) / 2, band_y + 58), tg,
+           font=f_tag, fill=(200, 210, 220))
+    # Right counts.
+    f_c1 = font(SANS_B, 13)
+    f_c2 = font(SANS, 10)
+    rt1 = "52 STORIES"
+    rt2 = "7 REGIONS \u00b7 16 PICTURES"
+    d.text((x1 - 10 - d.textlength(rt1, font=f_c1), band_y + 22), rt1,
+           font=f_c1, fill=GOLD)
+    d.text((x1 - 10 - d.textlength(rt2, font=f_c2), band_y + 42), rt2,
+           font=f_c2, fill=(255, 255, 255))
+    y = band_y + band_h + 4
+    d.rectangle((x0, y, x1, y + 3), fill=GOLD)
+    y += 9
 
-    # ---- Counts: stacked bars by region and by field, then the numbers ----
-    stories = ([(l[5], l[6]) for l in LEADS] + [(s[4], s[5]) for s in SMALL]
-               + [(b[2], b[3]) for b in BRIEFS])
-    rc = {k: 0 for k in REGION_COLORS}
-    fc = {k: 0 for k in FIELD_COLORS}
-    for region, field in stories:
-        rc[region] += 1
-        fc[field] += 1
-    count_bar(d, x0, y, cw, rc, REGION_COLORS, list(REGION_COLORS))
-    y += 15
-    draw_legend(d, x0, y, rc, REGION_COLORS, list(REGION_COLORS))
-    y += 16
-    count_bar(d, x0, y, cw, fc, FIELD_COLORS, list(FIELD_COLORS))
-    y += 15
-    draw_legend(d, x0, y, fc, FIELD_COLORS, list(FIELD_COLORS))
-    y += 18
-    size = 10
+    # ---- The day in numbers: five big figures in one row ----
+    # Shrink until the row fits the page width.
+    num_size = 22
     while True:
-        f_num_l = font(SANS_B, size)
-        f_num = font(SANS_B, size)
-        f_txt = font(SANS, size)
-        runs = [("THE DAY IN NUMBERS   ", f_num_l, RED)]
+        f_nl = font(SANS_B, 11)
+        f_nn = font(SERIF_B, num_size)
+        f_nt = font(SANS, 10)
+        runs = [("THE DAY IN NUMBERS   ", f_nl, RED)]
         for num, txt in NUMBERS:
-            runs.append((num + " ", f_num, RED))
-            runs.append((txt + "    \u00b7    ", f_txt, INK))
-        runs[-1] = (runs[-1][0].rstrip("    \u00b7    "), f_txt, INK)
+            runs.append((num + " ", f_nn, RED))
+            runs.append((txt + "    \u00b7    ", f_nt, INK))
+        runs[-1] = (runs[-1][0].rstrip("    \u00b7    "), f_nt, INK)
         total_w = sum(d.textlength(t, font=f) for t, f, _ in runs)
-        if total_w <= cw or size <= 8:
+        if total_w <= cw or num_size <= 16:
             break
-        size -= 1
-    draw_runs(d, (W - total_w) / 2, y, runs)
-    y += 15
+        num_size -= 1
+    rx = (W - total_w) / 2
+    for text, fnt, fill in runs:
+        # Numbers sit on the baseline of the label text.
+        dy = 4 if fnt is f_nn else 10
+        d.text((rx, y + dy), text, font=fnt, fill=fill)
+        rx += d.textlength(text, font=fnt)
+    y += 30
 
-    # ---- Leads: three big pictures ----
-    y += 4
-    lead_y = y
+    # ---- The day in UTC: seven timed beats on a slate band ----
+    f_tll = font(SANS_B, 10)
+    d.text((x0, y), "THE DAY IN UTC", font=f_tll, fill=RED)
+    y += 14
+    tl_y, tl_h = y, 26
+    d.rectangle((x0, tl_y, x1, tl_y + tl_h), fill=BAND)
+    f_tt = font(SANS_B, 9)
+    f_tx = font(SANS, 9)
+    seg_w = (cw - 16) / len(TIMELINE)
+    for i, (tm, tx) in enumerate(TIMELINE):
+        sx = x0 + 8 + i * seg_w
+        d.text((sx, tl_y + 8), tm, font=f_tt, fill=NAVY)
+        d.text((sx + d.textlength(tm + " ", font=f_tt), tl_y + 8), tx,
+               font=f_tx, fill=INK)
+    y = tl_y + tl_h + 4
+
+    # ---- Heroes: three big pictures with caption bars ----
+    hero_y = y
     col_w, gap = 322, 11
-    f_lead_k = font(SANS_B, 10)
-    f_lead_h = font(SERIF_B, 17)
-    f_lead_d = font(SANS, 10)
-    for i, (num, cell, kicker, head, deck, _r, _f, _p) in enumerate(LEADS):
+    f_hh = font(SERIF_B, 19)
+    f_hd = font(SANS, 10)
+    img_h = 124
+    for i, (num, cell, kicker, head, deck, _r, _f, proof, cap, _p) in \
+            enumerate(HEROES):
         lx = x0 + i * (col_w + gap)
-        img = crop_to(sheet_cell(sheet, cell), col_w, 128)
-        page.paste(img, (lx, lead_y))
-        badge(d, lx + 4, lead_y + 4, num)
-        ty = lead_y + 134
-        d.text((lx, ty), kicker, font=f_lead_k, fill=RED)
-        ty += 15
-        ty = draw_wrapped(d, lx, ty, head, f_lead_h, col_w, leading=20)
+        img = crop_to(sheet_cell(sheet, cell), col_w, img_h)
+        page.paste(img, (lx, hero_y))
+        d.rectangle((lx, hero_y + img_h - 18, lx + col_w,
+                     hero_y + img_h), fill=NAVY)
+        f_cap = font(SANS_B, 9)
+        d.text((lx + (col_w - d.textlength(cap, font=f_cap)) / 2,
+                hero_y + img_h - 14), cap, font=f_cap,
+               fill=(255, 255, 255))
+        ty = hero_y + img_h + 5
+        kicker_line(d, lx, ty, num, kicker, proof, col_w, badge_size=20,
+                    gold=True)
+        ty += 20
+        ty = draw_wrapped(d, lx, ty, head, f_hh, col_w, leading=22,
+                          max_lines=2)
         ty += 2
-        draw_wrapped(d, lx, ty, deck, f_lead_d, col_w, leading=13)
-    y = lead_y + 228
+        draw_wrapped(d, lx, ty, deck, f_hd, col_w, leading=13,
+                     max_lines=2)
+    y = hero_y + 222
 
-    # ---- Small pictures: ten more, five across, two rows ----
+    # ---- Medium row: four illustrated stories with overlay chips ----
     y += 4
-    small_y = y
+    med_y = y
+    mw, mgap = 242, 10
+    f_mh = font(SERIF_B, 14)
+    f_md = font(SANS, 9)
+    for i, (num, cell, kicker, head, deck, _r, _f, proof, chip, _p) in \
+            enumerate(MEDIUM):
+        mx = x0 + i * (mw + mgap)
+        img = crop_to(sheet_cell(sheet, cell), mw, 88)
+        page.paste(img, (mx, med_y))
+        f_chip = font(SANS_B, 8)
+        cw_chip = d.textlength(chip, font=f_chip) + 10
+        d.rectangle((mx, med_y, mx + cw_chip, med_y + 14), fill=NAVY)
+        d.text((mx + 5, med_y + 3), chip, font=f_chip,
+               fill=(255, 255, 255))
+        ty = med_y + 92
+        kicker_line(d, mx, ty, num, kicker, proof, mw, badge_size=16)
+        ty += 17
+        ty = draw_wrapped(d, mx, ty, head, f_mh, mw, leading=16,
+                          max_lines=2)
+        ty += 1
+        draw_wrapped(d, mx, ty, deck, f_md, mw, leading=12, max_lines=2)
+    y = med_y + 166
+
+    # ---- Small row: five illustrated stories ----
+    y += 4
+    sm_y = y
     sw, sgap = 195, 2
-    f_sm_h = font(SERIF_B, 11)
-    f_sm_d = font(SANS, 9)
-    for i, (num, cell, head, deck, _r, _f, _p) in enumerate(SMALL):
-        row, col = divmod(i, 5)
-        sx = x0 + col * (sw + sgap)
-        sy = small_y + row * 120
-        img = crop_to(sheet_cell(sheet, cell), sw, 76)
-        page.paste(img, (sx, sy))
-        badge(d, sx + 3, sy + 3, num, size=15)
-        ty = sy + 80
-        ty = draw_wrapped(d, sx, ty, head, f_sm_h, sw, leading=13)
-        draw_wrapped(d, sx, ty, deck, f_sm_d, sw, leading=11)
-    y = small_y + 240
+    f_sh = font(SERIF_B, 11)
+    f_sd = font(SANS, 9)
+    for i, (num, cell, kicker, head, deck, _r, _f, proof, _p) in \
+            enumerate(SMALL):
+        sx = x0 + i * (sw + sgap)
+        img = crop_to(sheet_cell(sheet, cell), sw, 60)
+        page.paste(img, (sx, sm_y))
+        ty = sm_y + 63
+        kicker_line(d, sx, ty, num, kicker, proof, sw, badge_size=15)
+        ty += 15
+        ty = draw_wrapped(d, sx, ty, head, f_sh, sw, leading=13,
+                          max_lines=2)
+        draw_wrapped(d, sx, ty, deck, f_sd, sw, leading=11, max_lines=2)
+    y = sm_y + 116
 
-    # ---- Also on Wednesday: the remaining briefs, three columns ----
-    y += 2
-    f_also = font(SANS_B, 11)
-    d.text((x0, y), "ALSO ON WEDNESDAY 18 NOVEMBER", font=f_also, fill=INK)
-    d.line((x0 + 250, y + 6, x1, y + 6), fill=RULE, width=1)
-    y += 17
-    brief_y = y
-    bw = 322
-    f_b = font(SANS, 10)
-    f_bp = font(SANS_B, 10)
+    # ---- Chart row: three data-graphics plus COP31 ----
+    y += 4
+    ch_y = y
+    cw2, cgap = 242, 10
+    f_ch = font(SERIF_B, 13)
+    f_cd = font(SANS, 9)
+    for i, (num, kind, kicker, head, deck, _r, _f, proof, _p) in \
+            enumerate(CHARTS):
+        cx2 = x0 + i * (cw2 + cgap)
+        if isinstance(kind, int):
+            img = crop_to(sheet_cell(sheet, kind), cw2, 49)
+        else:
+            img = draw_chart(kind, cw2, 49)
+        page.paste(img, (cx2, ch_y))
+        ty = ch_y + 52
+        kicker_line(d, cx2, ty, num, kicker, proof, cw2, badge_size=15)
+        ty += 15
+        ty = draw_wrapped(d, cx2, ty, head, f_ch, cw2, leading=15,
+                          max_lines=2)
+        draw_wrapped(d, cx2, ty, deck, f_cd, cw2, leading=11,
+                     max_lines=1)
+    y = ch_y + 108
+
+    # ---- Bottom: world map + numbered ALSO ON list ----
+    y += 4
+    bot_y = y
+    map_w = 372
+    f_sec = font(SANS_B, 11)
+    d.text((x0, bot_y), "WHERE IT HAPPENED", font=f_sec, fill=INK)
+    ax = x0 + map_w + 12
+    aw = x1 - ax
+    d.text((ax, bot_y), "ALSO ON WEDNESDAY 18 NOVEMBER", font=f_sec,
+           fill=INK)
+    d.line((ax + 252, bot_y + 6, x1, bot_y + 6), fill=RULE, width=1)
+    my = bot_y + 16
+    pins = [(s[0], s[9]) for s in HEROES + MEDIUM]
+    pins += [(s[0], s[8]) for s in SMALL + CHARTS]
+    pins = [(n, pin) for (n, pin) in pins if pin is not None]
+    draw_map(d, x0, my, map_w, 122, pins)
+    f_note = font(SANS, 8)
+    d.text((x0 + 4, my + 126),
+           "3 \u2014 Voyager 1 \u2014 is 25.9bn km away, off this map.",
+           font=f_note, fill=MUTED)
+    f_leg = font(SANS, 8)
+    lx2 = x0 + 4
+    for region in ("Asia", "Middle East", "Europe", "Africa", "Americas",
+                   "Oceania"):
+        d.ellipse((lx2, my + 140, lx2 + 7, my + 147),
+                  fill=REGION_COLORS[region])
+        lx2 += 10
+        t = region
+        d.text((lx2, my + 138), t, font=f_leg, fill=INK)
+        lx2 += d.textlength(t, font=f_leg) + 9
+    # ALSO ON: three columns of one-line briefs.
+    f_b = font(SANS, 9)
+    f_bp = font(SANS_B, 9)
+    f_bn = font(SANS_B, 9)
+    col_w2 = (aw - 16) // 3
     cols = [BRIEFS[i::3] for i in range(3)]
+    overflow = []
     for ci, col_items in enumerate(cols):
-        bx = x0 + ci * (bw + 11)
-        by = brief_y
-        for place, text, _r, _f in col_items:
-            line = place + " \u2014 " + text
-            lines = wrap(d, line, f_b, bw)
-            for li, ln in enumerate(lines):
-                if li == 0:
-                    pw = d.textlength(place + " ", font=f_bp)
-                    d.text((bx, by), place + " ", font=f_bp, fill=INK)
-                    d.text((bx + pw, by), ln[len(place) + 1:], font=f_b,
-                           fill=INK)
-                else:
-                    d.text((bx, by), ln, font=f_b, fill=INK)
-                by += 12
-            by += 2
-    y = brief_y + 180
+        bx2 = ax + ci * (col_w2 + 8)
+        by2 = my
+        for num, place, text in col_items:
+            line = "%d %s \u2014 %s" % (num, place, text)
+            if d.textlength(line, font=f_b) > col_w2:
+                overflow.append(line)
+            d.text((bx2, by2), str(num) + " ", font=f_bn, fill=RED)
+            nw = d.textlength(str(num) + " ", font=f_bn)
+            pw = d.textlength(place + " ", font=f_bp)
+            d.text((bx2 + nw, by2), place + " ", font=f_bp, fill=INK)
+            d.text((bx2 + nw + pw, by2),
+                   "\u2014 " + text, font=f_b, fill=INK)
+            by2 += 12
+    if overflow:
+        print("BRIEF OVERFLOW (%d):" % len(overflow))
+        for line in overflow:
+            print("  ", line)
+    y = bot_y + 160
 
-    # ---- Map and date check ----
+    # ---- Date check strip ----
     y += 2
-    map_w, box_h = 600, 82
-    date_w = cw - map_w - 12
-    dx = x0 + map_w + 12
-    f_sec = font(SANS_B, 10)
-    d.text((x0, y), "WHERE IT HAPPENED", font=f_sec, fill=INK)
-    d.text((dx, y), "DATE CHECK \u2014 WHAT WE LEFT OUT", font=f_sec, fill=RED)
-    y += 13
-    draw_map(d, x0, y, map_w, box_h - 13)
-    d.rectangle((dx, y, dx + date_w, y + box_h - 13), outline=RULE, width=1)
+    d.rectangle((x0, y, x0 + 5, y + 26), fill=RED)
     f_dc = font(SANS, 9)
-    draw_wrapped(d, dx + 6, y + 5, DATE_CHECK, f_dc, date_w - 12, leading=11)
-    y += box_h + 4
+    f_dcl = font(SANS_B, 10)
+    d.text((x0 + 10, y + 2), "DATE CHECK", font=f_dcl, fill=RED)
+    dw = d.textlength("DATE CHECK  ", font=f_dcl)
+    draw_wrapped(d, x0 + 10 + dw, y + 2, DATE_CHECK, f_dc,
+                 cw - 10 - dw, leading=11, max_lines=2)
+    y += 28
 
     # ---- Footer ----
     d.rectangle((x0, y, x1, y), fill=RULE)
     y += 5
-    draw_wrapped(d, x0, y, FOOTER, font(SANS, 8), cw, fill=MUTED, leading=10)
+    draw_wrapped(d, x0, y, FOOTER, font(SANS, 8), cw, fill=MUTED,
+                 leading=10)
+    y += 10
+    print("final y:", y, "(limit 1018)")
 
     page.save(out_path, "PNG", optimize=True)
     return out_path
